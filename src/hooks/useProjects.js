@@ -18,7 +18,7 @@ export function useProjects() {
 // Get single project with members
 export function useProjectWithMembers(projectId) {
   return useQuery({
-    queryKey: ["project", projectId],
+    queryKey: ["project", String(projectId)],
     queryFn: async () => {
       const project = await apiClient.get(`/projects/${projectId}`);
       const members = await apiClient.get(`/projects/${projectId}/members`);
@@ -65,7 +65,7 @@ export function useUpdateProject() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
 
       // refresh project detail page
-      queryClient.invalidateQueries({ queryKey: ["project", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["project", String(data.id)] });
     },
   });
 }
@@ -102,7 +102,7 @@ export function useAddProjectMember() {
       });
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", String(projectId)] });
     },
   });
 }
@@ -116,7 +116,7 @@ export function useRemoveProjectMember() {
       await apiClient.delete(`/projects/${projectId}/members/${userId}`);
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", String(projectId)] });
     },
   });
 }

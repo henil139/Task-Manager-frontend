@@ -38,7 +38,7 @@ export default function ActivityLogs() {
     <div>
       <h2>Activity Logs</h2>
       <Card>
-        <Table dataSource={logs} columns={columns} rowKey="id" size="small" pagination={{ pageSize: 20 }} />
+        <Table dataSource={logs} columns={columns} rowKey="id" size="small" pagination={false} />
       </Card>
     </div>
   );

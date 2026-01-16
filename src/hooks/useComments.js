@@ -4,7 +4,7 @@ import { apiClient } from '../integrations/api/client';
 // Get comments for a task
 export function useComments(taskId) {
   return useQuery({
-    queryKey: ['comments', taskId],
+    queryKey: ['comments', String(taskId)],
     queryFn: async () => {
       return await apiClient.get(`/tasks/${taskId}/comments`);
     },
@@ -20,8 +20,9 @@ export function useCreateComment() {
     mutationFn: async ({ taskId, content }) => {
       return await apiClient.post(`/tasks/${taskId}/comments`, { content });
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['comments', data.task_id] });
+    onSuccess: (data, variables) => {
+      // Use taskId from variables, convert to string to match query key
+      queryClient.invalidateQueries({ queryKey: ['comments', String(variables.taskId)] });
     },
   });
 }
@@ -36,7 +37,7 @@ export function useDeleteComment() {
       return taskId;
     },
     onSuccess: (taskId) => {
-      queryClient.invalidateQueries({ queryKey: ['comments', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['comments', String(taskId)] });
     },
   });
 }

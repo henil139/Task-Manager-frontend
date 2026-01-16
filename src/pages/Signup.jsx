@@ -33,7 +33,7 @@ export default function Signup() {
       <Card style={{ width: 320 }}>
         <h2 style={{ textAlign: 'center' }}>Sign Up</h2>
 
-        {error && <Alert message={error} type="error" style={{ marginBottom: 16 }} />}
+        {error && <Alert title  ={error} type="error" style={{ marginBottom: 16 }} />}
 
         <Form layout="vertical" onFinish={handleSubmit}>
           <Form.Item

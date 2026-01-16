@@ -86,7 +86,7 @@ export default function Users() {
     <div>
       <h2>Users</h2>
       <Card>
-        <Table dataSource={users} columns={columns} rowKey="id" size="small" />
+        <Table dataSource={users} columns={columns} rowKey="id" size="small" pagination={false} />
       </Card>
 
       <ConfirmDialog

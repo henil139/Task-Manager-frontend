@@ -25,8 +25,8 @@ export default function TaskActivityLog({ taskId }) {
 
     // Assignee change
     if (oldVals.assigned_to !== newVals.assigned_to) {
-      const oldName = log.old_assignee?.full_name || log.old_assignee?.email || 'Unassigned';
-      const newName = log.new_assignee?.full_name || log.new_assignee?.email || 'Unassigned';
+      const oldName = log.old_assignee?.username || log.old_assignee?.email || 'Unassigned';
+      const newName = log.new_assignee?.username || log.new_assignee?.email || 'Unassigned';
       changes.push({
         type: 'Assignee',
         from: oldVals.assigned_to ? oldName : 'Unassigned',
@@ -48,7 +48,7 @@ export default function TaskActivityLog({ taskId }) {
 
   const timelineItems = logs.map((log) => {
     const changes = formatChange(log);
-    const userName = log.user?.full_name || log.user?.email || 'System';
+    const userName = log.user?.username || log.user?.email || 'System';
     const time = dayjs(log.created_at).format('MMM D, YYYY h:mm A');
 
     return {

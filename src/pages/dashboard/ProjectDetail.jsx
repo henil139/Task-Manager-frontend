@@ -10,18 +10,40 @@ import {
   Select,
   message,
   Divider,
+  Space,
 } from "antd";
+import { EditOutlined, ArrowRightOutlined, DeleteOutlined } from "@ant-design/icons";
 import {
   useProjectWithMembers,
   useAddProjectMember,
   useRemoveProjectMember,
   useAllUsers,
 } from "../../hooks/useProjects.js";
-import { useTasks } from "../../hooks/useTasks.js";
+import { useTasks, useAdvanceTaskStatus, useDeleteTask } from "../../hooks/useTasks.js";
 import { useAuth } from "../../hooks/useAuth.jsx";
 import TaskModal from "../../components/tasks/TaskModal.jsx";
 import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import dayjs from "dayjs";
+
+// Status flow: to_do -> in_progress -> under_review -> completed
+const STATUS_FLOW = ["to_do", "in_progress", "under_review", "completed"];
+const STATUS_LABELS = {
+  to_do: "Start Progress",
+  in_progress: "Submit for Review",
+  under_review: "Mark Complete",
+};
+
+function getNextStatus(currentStatus) {
+  const currentIndex = STATUS_FLOW.indexOf(currentStatus);
+  if (currentIndex === -1 || currentIndex >= STATUS_FLOW.length - 1) {
+    return null; // Already at final status or invalid
+  }
+  return STATUS_FLOW[currentIndex + 1];
+}
+
+function getNextStatusLabel(currentStatus) {
+  return STATUS_LABELS[currentStatus] || null;
+}
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -33,14 +55,25 @@ export default function ProjectDetail() {
   const { data: allUsers } = useAllUsers();
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
+  const advanceStatus = useAdvanceTaskStatus(id);
+  const deleteTask = useDeleteTask(id);
 
   const [memberModalOpen, setMemberModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   // Remove member confirmation
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
+
+  // Advance status confirmation
+  const [advanceConfirmOpen, setAdvanceConfirmOpen] = useState(false);
+  const [taskToAdvance, setTaskToAdvance] = useState(null);
+
+  // Delete task confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
 
   const isAdmin = role === "admin";
 
@@ -79,10 +112,76 @@ export default function ProjectDetail() {
     }
   };
 
+  // Open edit modal
+  const handleEditClick = (task) => {
+    setEditingTask(task);
+    setTaskModalOpen(true);
+  };
+
+  // Close task modal
+  const handleTaskModalClose = () => {
+    setTaskModalOpen(false);
+    setEditingTask(null);
+  };
+
+  // Open advance status confirmation
+  const handleAdvanceClick = (task) => {
+    setTaskToAdvance(task);
+    setAdvanceConfirmOpen(true);
+  };
+
+  // Confirm advance status
+  const handleConfirmAdvance = async () => {
+    if (!taskToAdvance) return;
+    const newStatus = getNextStatus(taskToAdvance.status);
+    if (!newStatus) return;
+
+    try {
+      await advanceStatus.mutateAsync({ taskId: taskToAdvance.id, newStatus });
+      message.success(`Task moved to ${newStatus.replace("_", " ")}`);
+      setAdvanceConfirmOpen(false);
+      setTaskToAdvance(null);
+    } catch (error) {
+      message.error(error.message);
+    }
+  };
+
+  // Open delete confirmation
+  const handleDeleteClick = (task) => {
+    setTaskToDelete(task);
+    setDeleteConfirmOpen(true);
+  };
+
+  // Confirm delete task
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
+    try {
+      await deleteTask.mutateAsync(taskToDelete.id);
+      message.success("Task deleted");
+      setDeleteConfirmOpen(false);
+      setTaskToDelete(null);
+    } catch (error) {
+      message.error(error.message);
+    }
+  };
+
+  // Check if a date is overdue
+  const isOverdue = (date) => {
+    if (!date) return false;
+    return dayjs(date).isBefore(dayjs(), 'day');
+  };
+
   // Get users not already in project
   const existingMemberIds = project?.members?.map((m) => m.user_id) || [];
   const availableUsers =
     allUsers?.filter((u) => !existingMemberIds.includes(u.id)) || [];
+
+  // Helper to find assignee name from members
+  const getAssigneeName = (assignedToId) => {
+    if (!assignedToId) return "-";
+    const member = project?.members?.find((m) => m.id === assignedToId);
+    return member?.username || member?.email || "-";
+  };
 
   // Task table columns
   const taskColumns = [
@@ -91,7 +190,7 @@ export default function ProjectDetail() {
       dataIndex: "title",
       key: "title",
       render: (title, record) => (
-        <a onClick={() => navigate(`/dashboard/tasks/${record.id}`)}>{title}</a>
+        <a onClick={() => navigate(`/dashboard/projects/${id}/tasks/${record.id}`)}>{title}</a>
       ),
     },
     {
@@ -110,8 +209,8 @@ export default function ProjectDetail() {
             priority === "high"
               ? "red"
               : priority === "medium"
-              ? "orange"
-              : "green"
+                ? "orange"
+                : "green"
           }
         >
           {priority}
@@ -121,14 +220,57 @@ export default function ProjectDetail() {
     {
       title: "Assignee",
       key: "assignee",
-      render: (_, record) =>
-        record.assigned_user?.username || record.assigned_user?.email || "-",
+      render: (_, record) => getAssigneeName(record.assigned_to),
     },
     {
       title: "Due Date",
       dataIndex: "due_date",
       key: "due_date",
-      render: (date) => (date ? dayjs(date).format("YYYY-MM-DD") : "-"),
+      render: (date, record) => {
+        if (!date) return "-";
+        const overdue = isOverdue(date) && record.status !== "completed";
+        return (
+          <span style={{ color: overdue ? "#cf1322" : "inherit", fontWeight: overdue ? 500 : "normal" }}>
+            {dayjs(date).format("YYYY-MM-DD")}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => {
+        const nextLabel = getNextStatusLabel(record.status);
+        return (
+          <Space size="small">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEditClick(record)}
+            >
+              Edit
+            </Button>
+            {nextLabel && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<ArrowRightOutlined />}
+                onClick={() => handleAdvanceClick(record)}
+              >
+                {nextLabel}
+              </Button>
+            )}
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDeleteClick(record)}
+            >
+              Delete
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -244,10 +386,11 @@ export default function ProjectDetail() {
         )}
       </Modal>
 
-      {/* Task Modal */}
+      {/* Task Modal (Create / Edit) */}
       <TaskModal
         open={taskModalOpen}
-        onClose={() => setTaskModalOpen(false)}
+        onClose={handleTaskModalClose}
+        task={editingTask}
         members={project.members}
       />
 
@@ -260,12 +403,40 @@ export default function ProjectDetail() {
           setMemberToRemove(null);
         }}
         title="Remove Member"
-        description={`Are you sure you want to remove ${
-          memberToRemove?.username || memberToRemove?.email || "this user"
-        } from the project? They will no longer be able to see this project or its tasks.`}
+        description={`Are you sure you want to remove ${memberToRemove?.username || memberToRemove?.email || "this user"
+          } from the project? They will no longer be able to see this project or its tasks.`}
         confirmText="Remove Member"
         danger
         loading={removeMember.isPending}
+      />
+
+      {/* Advance Status Confirmation */}
+      <ConfirmDialog
+        open={advanceConfirmOpen}
+        onConfirm={handleConfirmAdvance}
+        onCancel={() => {
+          setAdvanceConfirmOpen(false);
+          setTaskToAdvance(null);
+        }}
+        title="Advance Task Status"
+        description={`Are you sure you want to move "${taskToAdvance?.title}" from "${taskToAdvance?.status?.replace("_", " ")}" to "${getNextStatus(taskToAdvance?.status)?.replace("_", " ")}"?`}
+        confirmText={getNextStatusLabel(taskToAdvance?.status) || "Confirm"}
+        loading={advanceStatus.isPending}
+      />
+
+      {/* Delete Task Confirmation */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setTaskToDelete(null);
+        }}
+        title="Delete Task"
+        description={`Are you sure you want to delete "${taskToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete Task"
+        danger
+        loading={deleteTask.isPending}
       />
     </div>
   );

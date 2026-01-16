@@ -30,6 +30,18 @@ export default function TaskDetail() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
 
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      await createComment.mutateAsync({ taskId, content: newComment });
+      setNewComment('');
+      message.success('Comment added');
+    } catch (error) {
+      message.error('Failed to add comment');
+    }
+  };
+
+
   if (isLoading) return <Spin />;
   if (!task) return <Card>Task not found</Card>;
 
@@ -60,14 +72,6 @@ export default function TaskDetail() {
         <p><strong>Project:</strong> {task.project?.title}</p>
         <p><strong>Assignee:</strong> {task.assigned_user?.username || '-'}</p>
         <p><strong>Due:</strong> {task.due_date ? dayjs(task.due_date).format('YYYY-MM-DD') : '-'}</p>
-
-        <Divider />
-
-        {allowedStatuses.map(s => (
-          <Button key={s} onClick={() => handleStatusChange(s)}>
-            Move to {s}
-          </Button>
-        ))}
       </Card>
 
       <TaskActivityLog taskId={taskId} />
@@ -79,7 +83,7 @@ export default function TaskDetail() {
         />
         <Button
           type="primary"
-          onClick={() => createComment.mutate({ taskId, content: newComment })}
+          onClick={handleAddComment}
         >
           Add Comment
         </Button>
@@ -91,13 +95,13 @@ export default function TaskDetail() {
               actions={
                 c.user_id === user.id || role === 'admin'
                   ? [
-                      <Popconfirm
-                        title="Delete?"
-                        onConfirm={() => deleteComment.mutate({ id: c.id, taskId })}
-                      >
-                        <Button danger size="small">Delete</Button>
-                      </Popconfirm>,
-                    ]
+                    <Popconfirm
+                      title="Delete?"
+                      onConfirm={() => deleteComment.mutate({ id: c.id, taskId })}
+                    >
+                      <Button danger size="small">Delete</Button>
+                    </Popconfirm>,
+                  ]
                   : []
               }
             >

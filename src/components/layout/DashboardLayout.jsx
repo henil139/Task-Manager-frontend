@@ -14,7 +14,7 @@ export default function DashboardLayout() {
     navigate('/login');
   };
 
-  // Menu items - admin sees Users and Activity Logs
+  // Menu items - admin sees Users
   const menuItems = [
     { key: '/dashboard', label: 'Dashboard' },
     { key: '/dashboard/projects', label: 'Projects' },
@@ -23,7 +23,6 @@ export default function DashboardLayout() {
 
   if (role === 'admin') {
     menuItems.push({ key: '/dashboard/users', label: 'Users' });
-    menuItems.push({ key: '/dashboard/activity', label: 'Activity Logs' });
   }
 
   return (

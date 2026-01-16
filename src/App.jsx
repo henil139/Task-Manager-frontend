@@ -30,7 +30,7 @@ function App() {
               <Route path="projects" element={<Projects />} />
               <Route path="projects/:id" element={<ProjectDetail />} />
               <Route path="tasks" element={<Tasks />} />
-              <Route path="tasks/:id" element={<TaskDetail />} />
+              <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
               <Route path="users" element={<ProtectedRoute requiredRole="admin"><Users /></ProtectedRoute>} />
               <Route path="activity" element={<ProtectedRoute requiredRole="admin"><ActivityLogs /></ProtectedRoute>} />
             </Route>

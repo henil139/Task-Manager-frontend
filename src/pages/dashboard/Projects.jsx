@@ -152,6 +152,7 @@ export default function Projects() {
           columns={columns}
           rowKey="id"
           size="small"
+          pagination={false}
         />
       </Card>
 

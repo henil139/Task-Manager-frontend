@@ -14,7 +14,7 @@ export function useAuditLogs(limit = 100) {
 // Get audit logs for a specific task (status, assignment, due date changes only)
 export function useTaskAuditLogs(taskId) {
   return useQuery({
-    queryKey: ['task-audit-logs', taskId],
+    queryKey: ['task-audit-logs', String(taskId)],
     queryFn: async () => {
       return await apiClient.get(`/audit-logs?task_id=${taskId}`);
     },

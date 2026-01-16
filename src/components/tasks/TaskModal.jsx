@@ -1,18 +1,20 @@
 import { useEffect } from "react";
 import { Modal, Form, Input, Select, DatePicker, message } from "antd";
 import { useCreateTask, useUpdateTask } from "../../hooks/useTasks.js";
-import { useProjectWithMembers } from "../../hooks/useProjects.js";
 import dayjs from "dayjs";
 import { useParams } from "react-router-dom";
 
 export default function TaskModal({ open, onClose, task, members }) {
-  const { id } = useParams();
+  const { id: projectIdFromUrl } = useParams();
   const [form] = Form.useForm();
   const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
-  // const { data: project } = useProjectWithMembers(projectId);
+
+  // For editing, use the task's project_id; for creating, use URL param
+  const projectId = task?.project_id || projectIdFromUrl;
+  const updateTask = useUpdateTask(projectId);
+
   const isEditing = !!task;
-console.log("isdd",id);
+
   // Set form values when modal opens
   useEffect(() => {
     if (open) {
@@ -20,7 +22,7 @@ console.log("isdd",id);
         form.setFieldsValue({
           title: task.title,
           description: task.description,
-          priority: task.priority,  
+          priority: task.priority,
           assigned_to: task.assigned_to,
           due_date: task.due_date ? dayjs(task.due_date) : null,
         });
@@ -48,8 +50,7 @@ console.log("isdd",id);
         await updateTask.mutateAsync({ id: task.id, ...formData });
         message.success("Task updated");
       } else {
-        console.log("ihjgjgd",id);
-        await createTask.mutateAsync({ project_id: parseInt(id), ...formData });
+        await createTask.mutateAsync({ project_id: parseInt(projectId), ...formData });
         message.success("Task created");
       }
       onClose();
@@ -57,6 +58,7 @@ console.log("isdd",id);
       message.error(error.message);
     }
   };
+
 
   return (
     <Modal
